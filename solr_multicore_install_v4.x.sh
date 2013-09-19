@@ -6,16 +6,15 @@
 #
 #   Prerequisites : a working drupal install with module apachesolr downloaded
 #
-#   NB : for a tomcat-based multi-core installation,
-#   @see http://geroldm.com/2012/08/drupal-and-apachesolrtomcat-multi-core-setup-in-debianubuntu/
-#   Also note : for geospatial search,
-#   @see http://ericlondon.com/posts/250-geospatial-apache-solr-searching-in-drupal-7-using-the-search-api-module-ubuntu-version-part-2
+#   NB : for a Tomcat-based multi-core installation,
+#   @see http://www.lullabot.com/blog/article/installing-solr-use-drupal
 #   
 #   This method by Jesper Kristensen does not require tomcat
 #   @see http://linuxdev.dk/articles/apache-solr-multicore-drupal-7
 #   @author Jesper Kristensen - http://drupal.org/user/697210
 #   
 #   Tested @ 2013/09/19 15:43:06 on Debian 6 "Squeeze", Drupal 7.23, apachesolr-7.x-1.4
+#   Tested @ 2013/09/19 17:37:03 on Debian 7 "Wheezy", Drupal 7.23, apachesolr-7.x-1.4 -- note : on Wheezy, we may replace "openjdk-6-jdk" with "openjdk-7-jdk"
 #   
 
 #       Variables (edit as needed)
@@ -29,7 +28,11 @@ DEFAULT_CORE_NAME="my-website"
 #-----------------------------------------
 #       Java
 
-aptitude install openjdk-6-jdk -y
+#       For Debian 6 "Squeeze"
+#aptitude install openjdk-6-jdk -y
+
+#       For Debian 7 "Wheezy"
+aptitude install openjdk-7-jdk -y
 
 
 #-----------------------------------------
@@ -80,7 +83,7 @@ cp -rf solr/collection1/conf/ solr/$DEFAULT_CORE_NAME
 mv /opt/solr-4.4.0/drupal/solr/solr.xml /opt/solr-4.4.0/drupal/solr/solr.xml.bak
 echo -n "<?xml version='1.0' encoding='UTF-8' ?>
 <solr persistent='false'>
-  <cores adminPath='/admin/cores' host='${host:}' hostPort='${jetty.port:8983}' hostContext='${hostContext:solr}'>
+  <cores adminPath='/admin/cores' host='\${host:}' hostPort='\${jetty.port:8983}' hostContext='\${hostContext:solr}'>
     <core name=\"$DEFAULT_CORE_NAME\" instanceDir=\"$DEFAULT_CORE_NAME\" />
   </cores>
 </solr>" > /opt/solr-4.4.0/drupal/solr/solr.xml
@@ -89,6 +92,12 @@ echo -n "<?xml version='1.0' encoding='UTF-8' ?>
 #-----------------------------------------
 #       Automatically start Solr
 #       (run-script)
+#       Note : this doesn't seem to auto-start when server (re)boots
+#       -> meanwhile, I start it manually with either :
+#       (no log)
+#nohup service apachesolr restart >& /dev/null &
+#       or (with default log)
+#nohup service apachesolr restart
 
 echo -n '#!/bin/sh
 ### BEGIN INIT INFO
@@ -139,7 +148,7 @@ sysv-rc-conf --level 2345 apachesolr on
 #       Drupal-specific
 
 cd $DRUPAL_SITE_PATH
-drush en apachesolr -y
+drush en apachesolr apachesolr_search search -y
 drush solr-set-env-url "http://localhost:8983/solr/$DEFAULT_CORE_NAME"
 
 #       Building initial index
